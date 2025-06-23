@@ -5,6 +5,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import javax.swing.Timer;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyAdapter;
 
 public class NumeroTelefonoDialog extends JDialog {
 
@@ -104,6 +107,7 @@ public class NumeroTelefonoDialog extends JDialog {
         gbc.gridy = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         txtNumero = new JTextField(20);
+        addRealTimeValidation(); 
         txtNumero.setBackground(new Color(60, 60, 60)); 
         txtNumero.setForeground(Color.WHITE);
         txtNumero.setCaretColor(Color.WHITE);
@@ -181,13 +185,124 @@ public class NumeroTelefonoDialog extends JDialog {
 
     private boolean validateInput() {
         String numero = txtNumero.getText().trim();
+        
+        // Verificar que no esté vacío
         if (numero.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "El número de teléfono no puede estar vacío.", "Error de Validación", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, 
+                "El número de teléfono no puede estar vacío.", 
+                "Error de Validación", 
+                JOptionPane.WARNING_MESSAGE);
             return false;
         }
+        
+        // Verificar longitud mínima
+        if (numero.length() < 7) {
+            JOptionPane.showMessageDialog(this, 
+                "El número de teléfono debe tener al menos 7 caracteres.", 
+                "Error de Validación", 
+                JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        
+        // Contar letras y números
+        int contadorLetras = 0;
+        int contadorNumeros = 0;
+        
+        for (char c : numero.toCharArray()) {
+            if (Character.isLetter(c)) {
+                contadorLetras++;
+            } else if (Character.isDigit(c)) {
+                contadorNumeros++;
+            }
+            // Permitir espacios, guiones, paréntesis, signos +
+            // No hacer nada para estos caracteres
+        }
+        
+        // Validar que tenga al menos algunos números
+        if (contadorNumeros < 5) {
+            JOptionPane.showMessageDialog(this, 
+                "El número de teléfono debe contener al menos 5 dígitos.", 
+                "Error de Validación", 
+                JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        
+        // Validar que no tenga más de 2 letras
+        if (contadorLetras > 2) {
+            JOptionPane.showMessageDialog(this, 
+                "El número de teléfono puede contener máximo 2 letras.", 
+                "Error de Validación", 
+                JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        
+        // Validar que no sea completamente letras (sin números)
+        if (contadorNumeros == 0) {
+            JOptionPane.showMessageDialog(this, 
+                "El número de teléfono debe contener dígitos numéricos.", 
+                "Error de Validación", 
+                JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        
+        // Validar caracteres permitidos (números, letras, espacios, guiones, paréntesis, +)
+        if (!numero.matches("[0-9a-zA-Z\\s\\-\\(\\)\\+\\#\\*]+")) {
+            JOptionPane.showMessageDialog(this, 
+                "El número de teléfono contiene caracteres no válidos.\n" +
+                "Solo se permiten: números, letras (máximo 2), espacios, guiones, paréntesis, + y #", 
+                "Error de Validación", 
+                JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        
         return true;
     }
 
+    private void addRealTimeValidation() {
+        txtNumero.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                String currentText = txtNumero.getText();
+                
+                // Contar letras actuales
+                long currentLetters = currentText.chars()
+                    .filter(ch -> Character.isLetter(ch))
+                    .count();
+                
+                // Si ya hay 2 letras y se intenta agregar otra letra, bloquear
+                if (Character.isLetter(c) && currentLetters >= 2) {
+                    evt.consume(); // Bloquea el carácter
+                    
+                    // Mostrar tooltip temporal
+                    JToolTip tooltip = txtNumero.createToolTip();
+                    tooltip.setTipText("Máximo 2 letras permitidas");
+                    
+                    // Opcional: cambiar color del borde temporalmente
+                    txtNumero.setBorder(BorderFactory.createLineBorder(Color.RED));
+                    
+                    // Restaurar borde original después de 2 segundos
+                    Timer timer = new Timer(2000, e -> {
+                        txtNumero.setBorder(BorderFactory.createLineBorder(new Color(90, 90, 90)));
+                    });
+                    timer.setRepeats(false);
+                    timer.start();
+                }
+                
+                // Bloquear caracteres no permitidos
+                if (!Character.isDigit(c) && !Character.isLetter(c) && 
+                    c != ' ' && c != '-' && c != '(' && c != ')' && 
+                    c != '+' && c != '#' && c != '*' && 
+                    c != KeyEvent.VK_BACK_SPACE && c != KeyEvent.VK_DELETE) {
+                    evt.consume();
+                }
+            }
+        });
+    }
+    /**
+	 * Indica si se guardó el número de teléfono.
+	 * @return true si se guardó, false si se canceló.
+	 */
     public boolean isSaved() {
         return saved;
     }
